@@ -42,10 +42,13 @@ def main():
 	busy_datetime_blocks = []
 	for row in reader:
 		if len(row) == 0:
-			print("There's an empty row in the csv file")
-		
+			print("There's an empty row in the csv file\n")
+			return -1
 		this_busy_block_start_datetime = string_to_datetime(row[1]) # index 0 is userid
-		this_busy_block_end_datetime = string_to_datetime(row[2])	
+		this_busy_block_end_datetime = string_to_datetime(row[2])
+		if (this_busy_block_end_datetime < this_busy_block_start_datetime):
+			print("End time cannot be before start time\n")
+			return -1	
 		if len(busy_datetime_blocks) == 0: # Initially empty list
 			busy_datetime_blocks = [[this_busy_block_start_datetime, this_busy_block_end_datetime]]
 		elif this_busy_block_end_datetime < busy_datetime_blocks[0][START]: # Insert at beginning of list
@@ -57,41 +60,46 @@ def main():
 			for i in range(0, len(busy_datetime_blocks)-1):
 								
 				# Insert busy block between two existing busy blocks, no overlaps
-				if this_busy_block_start_datetime > busy_datetime_blocks[i][1] and this_busy_block_end_datetime < busy_datetime_blocks[i+1][0]:
+				if this_busy_block_start_datetime > busy_datetime_blocks[i][END] and this_busy_block_end_datetime < busy_datetime_blocks[i+1][START]:
 					busy_datetime_blocks.insert(i+1, [this_busy_block_start_datetime, this_busy_block_end_datetime])
 					break	
 				
 				# Merge blocks otherwise
-				if this_busy_block_start_datetime < busy_datetime_blocks[i][0] or this_busy_block_end_datetime > busy_datetime_blocks[i][1]:
+				if this_busy_block_start_datetime < busy_datetime_blocks[i][START] or this_busy_block_end_datetime > busy_datetime_blocks[i][END]:
 					
 					merged_datetime_block = merge_overlapping_blocks([this_busy_block_start_datetime, this_busy_block_end_datetime], busy_datetime_blocks[i])
 					if DEBUG == 1:
-						print("merged_datetime_block\n")
+						print("merged_datetime_block")
 						print(merged_datetime_block)
+						print("\n\n")
 					busy_datetime_blocks[i] = merged_datetime_block
-					latest_finish_datetime = busy_datetime_blocks[i][1]
+					latest_finish_datetime = busy_datetime_blocks[i][END]
 					pop_counter = 0
 					original_length = len(busy_datetime_blocks)
 					while((pop_counter + i) < original_length-1):
-						if busy_datetime_blocks[i+1][1] < latest_finish_datetime: # remove redundant blocks from the list
+						if busy_datetime_blocks[i+1][END] < latest_finish_datetime: # remove redundant blocks from the list
 							popped = busy_datetime_blocks.pop(i+1)
 							pop_counter = pop_counter + 1	
 							if DEBUG == 1:
-								print("Popped off block\n")
+								print("Popped off block")
 								print(popped)
+								print("\n\n")
 						else:
 							break 
 					break
 
 	if DEBUG == 1:
-		print("busy_datetime_blocks\n")
+		print("busy_datetime_blocks")
 		print(busy_datetime_blocks)
+		print("\n\n")
 	
-	# Check for the biggest valid time interval
+	# Check for the largest valid time interval
 	largest_free_block = [now_datetime, now_datetime]
 	for i in range(1, len(busy_datetime_blocks)-1): 
 		if busy_datetime_blocks[i][END] < now_datetime:
 			continue
+
+		# Upper clamp
 		if busy_datetime_blocks[i+1][START] > latest_datetime:	
 			this_free_block = [busy_datetime_blocks[i][END], latest_datetime]
 		
